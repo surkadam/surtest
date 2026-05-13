@@ -1,108 +1,177 @@
+# ============================================================
+# GitLab CI/CD Pipeline — Qualys QScanner Image Scanning
+# ============================================================
+#
+# Required GitLab CI/CD Variables (Settings → CI/CD → Variables):
+#   QUALYS_ACCESS_TOKEN   — Qualys JWT access token          (Masked)
+#   QUALYS_POD            — Qualys pod name, e.g. ENG-POD01
+#
+# Optional overrides:
+#   OUTPUT_DIR            — QScanner output dir (default: /usr/local/qualys/qscanner/data/)
+# ============================================================
+
+variables:
+  OUTPUT_DIR:              "/usr/local/qualys/qscanner/data/"
+  PYTHON_IMAGE:            "$CI_REGISTRY_IMAGE/python-app:$CI_COMMIT_SHORT_SHA"
+  PYTHON_IMAGE_LATEST:     "$CI_REGISTRY_IMAGE/python-app:latest"
+  NODE_IMAGE:              "$CI_REGISTRY_IMAGE/node-app:$CI_COMMIT_SHORT_SHA"
+  NODE_IMAGE_LATEST:       "$CI_REGISTRY_IMAGE/node-app:latest"
+
 stages:
   - build
   - scan
 
-variables:
-  QUALYS_POD:         "ENG-POD01"
-  GHCR_ORG:           "surkadam"
-  DOCKER_DRIVER:      overlay2
-  DOCKER_TLS_CERTDIR: ""
-  # Set QSCANNER_BINARY_URL in GitLab CI/CD Variables (Settings → CI/CD → Variables)
-  # Get the URL from: https://jenkins.intranet.qualys.com/job/CS-Sensor/job/QScanner/job/develop/
-  # → Latest build → right-click qscanner artifact → Copy link address
-  # QSCANNER_BINARY_URL: "https://jenkins.intranet.qualys.com/job/CS-Sensor/job/QScanner/job/develop/lastSuccessfulBuild/artifact/qscanner"
+# ── Reusable: install qscanner via official Qualys download script ─────────────
+.download_qscanner: &download_qscanner
+  - apk add --no-cache bash curl wget
+  - wget -q "https://www.qualys.com/qscanner/download/latest/download_qscanner.sh"
+  - chmod +x download_qscanner.sh
+  - bash ./download_qscanner.sh
+  - chmod +x ./linux-amd64/qscanner
+  - ./linux-amd64/qscanner --version
+  - export HOME="$CI_PROJECT_DIR"
+  - mkdir -p "$OUTPUT_DIR"
+  - rm -rf "${OUTPUT_DIR:?}"/*
 
-# ── Reusable: derive image tag from branch name ────────────────────────────────
-.set_image_vars: &set_image_vars
-  - BRANCH_TAG=$(echo "${CI_COMMIT_BRANCH:-unknown}" | sed 's/\//-/g')
-  - PYTHON_IMAGE="ghcr.io/${GHCR_ORG}/qscanner-demo/python-app:${BRANCH_TAG}"
-  - NODE_IMAGE="ghcr.io/${GHCR_ORG}/qscanner-demo/node-app:${BRANCH_TAG}"
-  - echo "Branch  ${BRANCH_TAG}  Commit  ${CI_COMMIT_SHA}"
-
-# ── Reusable: download qscanner 5.1.0 from GitLab Package Registry ────────────
-.get_qscanner: &get_qscanner
-  - echo "[qscanner] Downloading binary from GitLab Package Registry..."
-  - |
-    curl -fsSL \
-      --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-      "https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/packages/generic/qscanner/5.1.0/qscanner" \
-      -o qscanner
-  - chmod +x qscanner
-  - ./qscanner --version
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STAGE 1 — BUILD
 # ═══════════════════════════════════════════════════════════════════════════════
 
-build_python_app:
+build-python-app:
+  image: docker:24.0.2
   stage: build
-  image: docker:24
   services:
-    - docker:24-dind
+    - docker:24.0.2-dind
   script:
-    - *set_image_vars
-    - docker build -t "${PYTHON_IMAGE}" ./apps/python-app
-    - echo "PYTHON_IMAGE=${PYTHON_IMAGE}" > python.env
+    - docker build --tag "$PYTHON_IMAGE" --tag "$PYTHON_IMAGE_LATEST"
+        --file apps/python-app/Dockerfile apps/python-app
+    - docker login --username gitlab-ci-token --password "$CI_JOB_TOKEN" "$CI_REGISTRY"
+    - docker push "$PYTHON_IMAGE"
+    - docker push "$PYTHON_IMAGE_LATEST"
+    - |
+      IMAGE_ID=$(docker inspect --format='{{.Id}}' "$PYTHON_IMAGE" | sed 's/^sha256://')
+      echo "IMAGE_ID: $IMAGE_ID"
+      echo "$IMAGE_ID" > python_image_id.txt
   artifacts:
-    reports:
-      dotenv: python.env
+    paths:
+      - python_image_id.txt
 
-build_node_app:
+build-node-app:
+  image: docker:24.0.2
   stage: build
-  image: docker:24
   services:
-    - docker:24-dind
+    - docker:24.0.2-dind
   script:
-    - *set_image_vars
-    - docker build -t "${NODE_IMAGE}" ./apps/node-app
-    - echo "NODE_IMAGE=${NODE_IMAGE}" > node.env
+    - docker build --tag "$NODE_IMAGE" --tag "$NODE_IMAGE_LATEST"
+        --file apps/node-app/Dockerfile apps/node-app
+    - docker login --username gitlab-ci-token --password "$CI_JOB_TOKEN" "$CI_REGISTRY"
+    - docker push "$NODE_IMAGE"
+    - docker push "$NODE_IMAGE_LATEST"
+    - |
+      IMAGE_ID=$(docker inspect --format='{{.Id}}' "$NODE_IMAGE" | sed 's/^sha256://')
+      echo "IMAGE_ID: $IMAGE_ID"
+      echo "$IMAGE_ID" > node_image_id.txt
   artifacts:
-    reports:
-      dotenv: node.env
+    paths:
+      - node_image_id.txt
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STAGE 2 — QUALYS IMAGE SCAN
 # ═══════════════════════════════════════════════════════════════════════════════
 
-scan_python_image:
+scan-python-app:
+  image: docker:24.0.2
   stage: scan
-  image: docker:24
   services:
-    - docker:24-dind
+    - docker:24.0.2-dind
   needs:
-    - job: build_python_app
+    - job: build-python-app
       artifacts: true
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: "/certs"
   script:
-    - *set_image_vars
-    - *get_qscanner
+    - *download_qscanner
+    - docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
+    - docker pull "$PYTHON_IMAGE"
+    - export QUALYS_ACCESS_TOKEN="$QUALYS_ACCESS_TOKEN"
     - |
-      ./qscanner image "${PYTHON_IMAGE}" \
-        --pod "${QUALYS_POD}" \
-        --skip-verify-tls \
+      echo "Scanning image: $PYTHON_IMAGE"
+      ./linux-amd64/qscanner image "$PYTHON_IMAGE" \
+        --pod "$QUALYS_POD" \
         -l debug \
-        --client-id "${QUALYS_CLIENT_ID}" \
-        --client-secret "${QUALYS_CLIENT_SECRET}" \
-        --collect-build-pipeline-metadata=true
-  after_script:
-    - BRANCH_TAG=$(echo "${CI_COMMIT_BRANCH:-unknown}" | sed 's/\//-/g')
-    - echo "Query → buildPipelineMetadata.repositoryMetadata.repository:\"https://gitlab.com/surkadam/qscanner-demo.git\" AND buildPipelineMetadata.repositoryMetadata.branch:\"${BRANCH_TAG}\" AND buildPipelineMetadata.repositoryMetadata.commits.hash:\"${CI_COMMIT_SHA}\""
+        --cache local \
+        --offline-scan \
+        --scan-types pkg,secret \
+        --skip-verify-tls \
+        --report-format gitlab \
+        --mode evaluate-policy \
+        --collect-build-pipeline-metadata=true \
+        -o "$OUTPUT_DIR" || QSCANNER_RC=$?
+      echo "qscanner exit code: ${QSCANNER_RC:-0}"
+      ls -ltr "$OUTPUT_DIR/"
+      VULN_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_vuln_report.json" | head -1)
+      SECRET_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_secret_report.json" | head -1)
+      [ -z "$VULN_SRC" ]   && echo "ERROR: vuln report not found in $OUTPUT_DIR"   && exit 1
+      [ -z "$SECRET_SRC" ] && echo "ERROR: secret report not found in $OUTPUT_DIR" && exit 1
+      cp "$VULN_SRC"   "python_gitlab_vuln_report.json"
+      cp "$SECRET_SRC" "python_gitlab_secret_report.json"
+      exit ${QSCANNER_RC:-0}
+  artifacts:
+    access: developer
+    when: always
+    paths:
+      - python_gitlab_vuln_report.json
+      - python_gitlab_secret_report.json
+    reports:
+      container_scanning: python_gitlab_vuln_report.json
+      secret_detection: python_gitlab_secret_report.json
 
-scan_node_image:
+scan-node-app:
+  image: docker:24.0.2
   stage: scan
-  image: docker:24
   services:
-    - docker:24-dind
+    - docker:24.0.2-dind
   needs:
-    - job: build_node_app
+    - job: build-node-app
       artifacts: true
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: "/certs"
   script:
-    - *set_image_vars
-    - *get_qscanner
+    - *download_qscanner
+    - docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
+    - docker pull "$NODE_IMAGE"
+    - export QUALYS_ACCESS_TOKEN="$QUALYS_ACCESS_TOKEN"
     - |
-      ./qscanner image "${NODE_IMAGE}" \
-        --pod "${QUALYS_POD}" \
-        --skip-verify-tls \
+      echo "Scanning image: $NODE_IMAGE"
+      ./linux-amd64/qscanner image "$NODE_IMAGE" \
+        --pod "$QUALYS_POD" \
         -l debug \
-        --client-id "${QUALYS_CLIENT_ID}" \
-        --client-secret "${QUALYS_CLIENT_SECRET}" \
-        --collect-build-pipeline-metadata=true
+        --cache local \
+        --offline-scan \
+        --scan-types pkg,secret \
+        --skip-verify-tls \
+        --report-format gitlab \
+        --mode evaluate-policy \
+        --collect-build-pipeline-metadata=true \
+        -o "$OUTPUT_DIR" || QSCANNER_RC=$?
+      echo "qscanner exit code: ${QSCANNER_RC:-0}"
+      ls -ltr "$OUTPUT_DIR/"
+      VULN_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_vuln_report.json" | head -1)
+      SECRET_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_secret_report.json" | head -1)
+      [ -z "$VULN_SRC" ]   && echo "ERROR: vuln report not found in $OUTPUT_DIR"   && exit 1
+      [ -z "$SECRET_SRC" ] && echo "ERROR: secret report not found in $OUTPUT_DIR" && exit 1
+      cp "$VULN_SRC"   "node_gitlab_vuln_report.json"
+      cp "$SECRET_SRC" "node_gitlab_secret_report.json"
+      exit ${QSCANNER_RC:-0}
+  artifacts:
+    access: developer
+    when: always
+    paths:
+      - node_gitlab_vuln_report.json
+      - node_gitlab_secret_report.json
+    reports:
+      container_scanning: node_gitlab_vuln_report.json
+      secret_detection: node_gitlab_secret_report.json
