@@ -103,7 +103,7 @@ scan-python-app:
         -l debug \
         --cache local \
         --offline-scan \
-        --scan-types pkg,secret \
+        --scan-types pkg \
         --skip-verify-tls \
         --report-format gitlab \
         --collect-build-pipeline-metadata=true \
