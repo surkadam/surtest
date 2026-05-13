@@ -41,6 +41,8 @@ stages:
 build-python-app:
   image: docker:24.0.2
   stage: build
+  tags:
+    - qualys-internal
   services:
     - docker:24.0.2-dind
   script:
@@ -60,6 +62,8 @@ build-python-app:
 build-node-app:
   image: docker:24.0.2
   stage: build
+  tags:
+    - qualys-internal
   services:
     - docker:24.0.2-dind
   script:
@@ -83,6 +87,8 @@ build-node-app:
 scan-python-app:
   image: docker:24.0.2
   stage: scan
+  tags:
+    - qualys-internal
   services:
     - docker:24.0.2-dind
   needs:
@@ -124,6 +130,8 @@ scan-python-app:
 scan-node-app:
   image: docker:24.0.2
   stage: scan
+  tags:
+    - qualys-internal
   services:
     - docker:24.0.2-dind
   needs:
