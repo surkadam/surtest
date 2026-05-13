@@ -41,7 +41,7 @@ stages:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 build-python-app:
-  image: docker:24.0.2
+  image: docker:27
   stage: build
   tags:
     - qualys-internal
@@ -60,7 +60,7 @@ build-python-app:
       - python_image_id.txt
 
 build-node-app:
-  image: docker:24.0.2
+  image: docker:27
   stage: build
   tags:
     - qualys-internal
@@ -83,7 +83,7 @@ build-node-app:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 scan-python-app:
-  image: docker:24.0.2
+  image: docker:27
   stage: scan
   tags:
     - qualys-internal
@@ -121,7 +121,7 @@ scan-python-app:
       container_scanning: python_gitlab_vuln_report.json
 
 scan-node-app:
-  image: docker:24.0.2
+  image: docker:27
   stage: scan
   tags:
     - qualys-internal
