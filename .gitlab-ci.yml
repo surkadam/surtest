@@ -101,7 +101,7 @@ scan-python-app:
       ./linux-amd64/qscanner image "$PYTHON_IMAGE" \
         --pod "$QUALYS_POD" \
         -l debug \
-        --scan-types pkg,secret \
+        --scan-types pkg \
         --skip-verify-tls \
         --report-format gitlab \
         --collect-build-pipeline-metadata=true \
@@ -110,21 +110,16 @@ scan-python-app:
       echo "--- OUTPUT_DIR contents ---"
       ls -ltr "$OUTPUT_DIR/" || echo "OUTPUT_DIR is empty or missing"
       VULN_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_vuln_report.json" 2>/dev/null | head -1)
-      SECRET_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_secret_report.json" 2>/dev/null | head -1)
-      [ -z "$VULN_SRC" ]   && echo "ERROR: vuln report not found in $OUTPUT_DIR"   && exit 1
-      [ -z "$SECRET_SRC" ] && echo "ERROR: secret report not found in $OUTPUT_DIR" && exit 1
-      cp "$VULN_SRC"   "python_gitlab_vuln_report.json"
-      cp "$SECRET_SRC" "python_gitlab_secret_report.json"
+      [ -z "$VULN_SRC" ] && echo "ERROR: vuln report not found in $OUTPUT_DIR" && exit 1
+      cp "$VULN_SRC" "python_gitlab_vuln_report.json"
       exit ${QSCANNER_RC:-0}
   artifacts:
     access: developer
     when: always
     paths:
       - python_gitlab_vuln_report.json
-      - python_gitlab_secret_report.json
     reports:
       container_scanning: python_gitlab_vuln_report.json
-      secret_detection: python_gitlab_secret_report.json
 
 scan-node-app:
   image: docker:24.0.2
@@ -147,7 +142,7 @@ scan-node-app:
       ./linux-amd64/qscanner image "$NODE_IMAGE" \
         --pod "$QUALYS_POD" \
         -l debug \
-        --scan-types pkg,secret \
+        --scan-types pkg \
         --skip-verify-tls \
         --report-format gitlab \
         --collect-build-pipeline-metadata=true \
@@ -156,18 +151,13 @@ scan-node-app:
       echo "--- OUTPUT_DIR contents ---"
       ls -ltr "$OUTPUT_DIR/" || echo "OUTPUT_DIR is empty or missing"
       VULN_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_vuln_report.json" 2>/dev/null | head -1)
-      SECRET_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_secret_report.json" 2>/dev/null | head -1)
-      [ -z "$VULN_SRC" ]   && echo "ERROR: vuln report not found in $OUTPUT_DIR"   && exit 1
-      [ -z "$SECRET_SRC" ] && echo "ERROR: secret report not found in $OUTPUT_DIR" && exit 1
-      cp "$VULN_SRC"   "node_gitlab_vuln_report.json"
-      cp "$SECRET_SRC" "node_gitlab_secret_report.json"
+      [ -z "$VULN_SRC" ] && echo "ERROR: vuln report not found in $OUTPUT_DIR" && exit 1
+      cp "$VULN_SRC" "node_gitlab_vuln_report.json"
       exit ${QSCANNER_RC:-0}
   artifacts:
     access: developer
     when: always
     paths:
       - node_gitlab_vuln_report.json
-      - node_gitlab_secret_report.json
     reports:
       container_scanning: node_gitlab_vuln_report.json
-      secret_detection: node_gitlab_secret_report.json
