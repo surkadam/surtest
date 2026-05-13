@@ -101,18 +101,16 @@ scan-python-app:
       ./linux-amd64/qscanner image "$PYTHON_IMAGE" \
         --pod "$QUALYS_POD" \
         -l debug \
-        --cache local \
-        --offline-scan \
         --scan-types pkg,secret \
         --skip-verify-tls \
         --report-format gitlab \
-        --mode evaluate-policy \
         --collect-build-pipeline-metadata=true \
         -o "$OUTPUT_DIR" || QSCANNER_RC=$?
       echo "qscanner exit code: ${QSCANNER_RC:-0}"
-      ls -ltr "$OUTPUT_DIR/"
-      VULN_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_vuln_report.json" | head -1)
-      SECRET_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_secret_report.json" | head -1)
+      echo "--- OUTPUT_DIR contents ---"
+      ls -ltr "$OUTPUT_DIR/" || echo "OUTPUT_DIR is empty or missing"
+      VULN_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_vuln_report.json" 2>/dev/null | head -1)
+      SECRET_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_secret_report.json" 2>/dev/null | head -1)
       [ -z "$VULN_SRC" ]   && echo "ERROR: vuln report not found in $OUTPUT_DIR"   && exit 1
       [ -z "$SECRET_SRC" ] && echo "ERROR: secret report not found in $OUTPUT_DIR" && exit 1
       cp "$VULN_SRC"   "python_gitlab_vuln_report.json"
@@ -149,18 +147,16 @@ scan-node-app:
       ./linux-amd64/qscanner image "$NODE_IMAGE" \
         --pod "$QUALYS_POD" \
         -l debug \
-        --cache local \
-        --offline-scan \
         --scan-types pkg,secret \
         --skip-verify-tls \
         --report-format gitlab \
-        --mode evaluate-policy \
         --collect-build-pipeline-metadata=true \
         -o "$OUTPUT_DIR" || QSCANNER_RC=$?
       echo "qscanner exit code: ${QSCANNER_RC:-0}"
-      ls -ltr "$OUTPUT_DIR/"
-      VULN_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_vuln_report.json" | head -1)
-      SECRET_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_secret_report.json" | head -1)
+      echo "--- OUTPUT_DIR contents ---"
+      ls -ltr "$OUTPUT_DIR/" || echo "OUTPUT_DIR is empty or missing"
+      VULN_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_vuln_report.json" 2>/dev/null | head -1)
+      SECRET_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_secret_report.json" 2>/dev/null | head -1)
       [ -z "$VULN_SRC" ]   && echo "ERROR: vuln report not found in $OUTPUT_DIR"   && exit 1
       [ -z "$SECRET_SRC" ] && echo "ERROR: secret report not found in $OUTPUT_DIR" && exit 1
       cp "$VULN_SRC"   "node_gitlab_vuln_report.json"
