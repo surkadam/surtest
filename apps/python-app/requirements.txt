@@ -7,3 +7,5 @@ certifi==2022.12.7
 cryptography==38.0.1
 PyYAML==5.4.1
 Pillow==9.0.1
+SQLAlchemy==1.4.46
+paramiko==2.10.1
