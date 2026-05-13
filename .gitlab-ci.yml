@@ -19,10 +19,14 @@ variables:
   - NODE_IMAGE="ghcr.io/${GHCR_ORG}/qscanner-demo/node-app:${BRANCH_TAG}"
   - echo "Branch  ${BRANCH_TAG}  Commit  ${CI_COMMIT_SHA}"
 
-# ── Reusable: download qscanner 5.1.0 binary ──────────────────────────────────
+# ── Reusable: download qscanner 5.1.0 from GitLab Package Registry ────────────
 .get_qscanner: &get_qscanner
-  - echo "[qscanner] Downloading binary from Jenkins..."
-  - curl -fsSL --user "${JENKINS_USER}:${JENKINS_TOKEN}" "${QSCANNER_BINARY_URL}" -o qscanner
+  - echo "[qscanner] Downloading binary from GitLab Package Registry..."
+  - |
+    curl -fsSL \
+      --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+      "https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/packages/generic/qscanner/5.1.0/qscanner" \
+      -o qscanner
   - chmod +x qscanner
   - ./qscanner --version
 
