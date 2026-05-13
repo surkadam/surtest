@@ -1,0 +1,105 @@
+stages:
+  - build_and_scan
+
+variables:
+  QUALYS_POD:   "ENG-POD01"
+  GHCR_ORG:     "surkadam"
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+
+# ── Shared setup script ────────────────────────────────────────────────────────
+.setup_env: &setup_env |
+  BRANCH_TAG=$(echo "${CI_COMMIT_BRANCH:-$CI_DEFAULT_BRANCH}" | sed 's/\//-/g')
+  PYTHON_IMAGE="ghcr.io/${GHCR_ORG}/qscanner-demo/python-app:${BRANCH_TAG}"
+  NODE_IMAGE="ghcr.io/${GHCR_ORG}/qscanner-demo/node-app:${BRANCH_TAG}"
+  echo "Branch   : ${BRANCH_TAG}"
+  echo "Commit   : ${CI_COMMIT_SHA}"
+  echo "Python   : ${PYTHON_IMAGE}"
+  echo "Node     : ${NODE_IMAGE}"
+
+# ── Download qscanner if not pre-installed ─────────────────────────────────────
+.get_qscanner: &get_qscanner |
+  if [ ! -f "./qscanner" ]; then
+    echo "[INFO] qscanner not found — downloading..."
+    curl -fsSL "${QSCANNER_DOWNLOAD_URL}" -o qscanner
+    chmod +x qscanner
+  fi
+  ./qscanner --version || true
+
+# ── Python App: Build → Image Scan → Code Scan ────────────────────────────────
+scan_python_app:
+  stage: build_and_scan
+  image: docker:24
+  services:
+    - docker:24-dind
+  script:
+    - *setup_env
+
+    # 1. Build Docker image
+    - docker build -t "${PYTHON_IMAGE}" ./apps/python-app
+
+    # 2. Get qscanner binary
+    - *get_qscanner
+
+    # 3. Image scan — populates /images/pivot_list with build pipeline metadata
+    - |
+      ./qscanner image "${PYTHON_IMAGE}" \
+        --pod "${QUALYS_POD}" \
+        --skip-verify-tls \
+        -l debug \
+        --client-id "${QUALYS_CLIENT_ID}" \
+        --client-secret "${QUALYS_CLIENT_SECRET}" \
+        --collect-build-pipeline-metadata=true
+
+    # 4. Code scan — links code findings to the image (populates Associated Images)
+    - |
+      ./qscanner code ./apps/python-app \
+        --pod "${QUALYS_POD}" \
+        --skip-verify-tls \
+        -l debug \
+        --client-id "${QUALYS_CLIENT_ID}" \
+        --client-secret "${QUALYS_CLIENT_SECRET}" \
+        --image "${PYTHON_IMAGE}"
+
+  after_script:
+    - |
+      BRANCH_TAG=$(echo "${CI_COMMIT_BRANCH:-$CI_DEFAULT_BRANCH}" | sed 's/\//-/g')
+      echo "=== pivot_list query ==="
+      echo "buildPipelineMetadata.repositoryMetadata.repository:\"https://gitlab.com/surkadam/qscanner-demo.git\""
+      echo "AND buildPipelineMetadata.repositoryMetadata.branch:\"${BRANCH_TAG}\""
+      echo "AND buildPipelineMetadata.repositoryMetadata.commits.hash:\"${CI_COMMIT_SHA}\""
+
+# ── Node App: Build → Image Scan → Code Scan ──────────────────────────────────
+scan_node_app:
+  stage: build_and_scan
+  image: docker:24
+  services:
+    - docker:24-dind
+  script:
+    - *setup_env
+
+    # 1. Build Docker image
+    - docker build -t "${NODE_IMAGE}" ./apps/node-app
+
+    # 2. Get qscanner binary
+    - *get_qscanner
+
+    # 3. Image scan
+    - |
+      ./qscanner image "${NODE_IMAGE}" \
+        --pod "${QUALYS_POD}" \
+        --skip-verify-tls \
+        -l debug \
+        --client-id "${QUALYS_CLIENT_ID}" \
+        --client-secret "${QUALYS_CLIENT_SECRET}" \
+        --collect-build-pipeline-metadata=true
+
+    # 4. Code scan
+    - |
+      ./qscanner code ./apps/node-app \
+        --pod "${QUALYS_POD}" \
+        --skip-verify-tls \
+        -l debug \
+        --client-id "${QUALYS_CLIENT_ID}" \
+        --client-secret "${QUALYS_CLIENT_SECRET}" \
+        --image "${NODE_IMAGE}"
