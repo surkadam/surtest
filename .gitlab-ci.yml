@@ -18,17 +18,23 @@ variables:
   NODE_IMAGE_LATEST:       "$CI_REGISTRY_IMAGE/node-app:latest"
   DOCKER_HOST:             "unix:///var/run/docker.sock"
   DOCKER_TLS_CERTDIR:      ""
+  QSCANNER_VERSION:        "5.1.0"
+  QSCANNER_PKG_URL:        "https://gitlab.com/api/v4/projects/82155352/packages/generic/qscanner/${QSCANNER_VERSION}/qscanner"
 
 stages:
   - build
   - scan
 
-# ── Reusable: install qscanner via official Qualys download script ─────────────
+# ── Reusable: download qscanner 5.x from GitLab Package Registry ─────────────
 .download_qscanner: &download_qscanner
-  - apk add --no-cache bash curl wget
-  - wget -q "https://www.qualys.com/qscanner/download/latest/download_qscanner.sh"
-  - chmod +x download_qscanner.sh
-  - bash ./download_qscanner.sh
+  - apk add --no-cache curl
+  - mkdir -p linux-amd64
+  - |
+    echo "Downloading qscanner ${QSCANNER_VERSION} from GitLab Package Registry..."
+    curl --silent --fail --location \
+      --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+      --output linux-amd64/qscanner \
+      "${QSCANNER_PKG_URL}"
   - chmod +x ./linux-amd64/qscanner
   - ./linux-amd64/qscanner --version
   - export HOME="$CI_PROJECT_DIR"
