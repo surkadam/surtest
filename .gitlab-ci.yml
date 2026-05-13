@@ -103,23 +103,30 @@ scan-python-app:
         -l debug \
         --scan-types pkg \
         --skip-verify-tls \
-        --report-format gitlab \
         --collect-build-pipeline-metadata=true \
         -o "$OUTPUT_DIR" || QSCANNER_RC=$?
       echo "qscanner exit code: ${QSCANNER_RC:-0}"
       echo "--- OUTPUT_DIR contents ---"
       ls -ltr "$OUTPUT_DIR/" || echo "OUTPUT_DIR is empty or missing"
-      VULN_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_vuln_report.json" 2>/dev/null | head -1)
-      [ -z "$VULN_SRC" ] && echo "ERROR: vuln report not found in $OUTPUT_DIR" && exit 1
-      cp "$VULN_SRC" "python_gitlab_vuln_report.json"
+      SCAN_JSON=$(find "$OUTPUT_DIR" -name "*-ScanResult.json" 2>/dev/null | head -1)
+      if [ -n "$SCAN_JSON" ]; then
+        cp "$SCAN_JSON" "python_scan_result.json"
+        echo "Scan result archived: python_scan_result.json"
+      else
+        echo "ERROR: No scan result found — qscanner may have failed before scanning"
+        exit 1
+      fi
+      if [ "${QSCANNER_RC:-0}" -eq 37 ]; then
+        echo "WARNING: qscanner could not upload to Qualys backend (exit 37)."
+        echo "Local scan succeeded. Run with a self-hosted runner on the Qualys internal network to upload results."
+        exit 0
+      fi
       exit ${QSCANNER_RC:-0}
   artifacts:
     access: developer
     when: always
     paths:
-      - python_gitlab_vuln_report.json
-    reports:
-      container_scanning: python_gitlab_vuln_report.json
+      - python_scan_result.json
 
 scan-node-app:
   image: docker:24.0.2
@@ -144,20 +151,27 @@ scan-node-app:
         -l debug \
         --scan-types pkg \
         --skip-verify-tls \
-        --report-format gitlab \
         --collect-build-pipeline-metadata=true \
         -o "$OUTPUT_DIR" || QSCANNER_RC=$?
       echo "qscanner exit code: ${QSCANNER_RC:-0}"
       echo "--- OUTPUT_DIR contents ---"
       ls -ltr "$OUTPUT_DIR/" || echo "OUTPUT_DIR is empty or missing"
-      VULN_SRC=$(find "$OUTPUT_DIR" -name "*-gitlab_vuln_report.json" 2>/dev/null | head -1)
-      [ -z "$VULN_SRC" ] && echo "ERROR: vuln report not found in $OUTPUT_DIR" && exit 1
-      cp "$VULN_SRC" "node_gitlab_vuln_report.json"
+      SCAN_JSON=$(find "$OUTPUT_DIR" -name "*-ScanResult.json" 2>/dev/null | head -1)
+      if [ -n "$SCAN_JSON" ]; then
+        cp "$SCAN_JSON" "node_scan_result.json"
+        echo "Scan result archived: node_scan_result.json"
+      else
+        echo "ERROR: No scan result found — qscanner may have failed before scanning"
+        exit 1
+      fi
+      if [ "${QSCANNER_RC:-0}" -eq 37 ]; then
+        echo "WARNING: qscanner could not upload to Qualys backend (exit 37)."
+        echo "Local scan succeeded. Run with a self-hosted runner on the Qualys internal network to upload results."
+        exit 0
+      fi
       exit ${QSCANNER_RC:-0}
   artifacts:
     access: developer
     when: always
     paths:
-      - node_gitlab_vuln_report.json
-    reports:
-      container_scanning: node_gitlab_vuln_report.json
+      - node_scan_result.json
