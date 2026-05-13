@@ -102,6 +102,8 @@ scan-python-app:
     - docker pull "$PYTHON_IMAGE"
     - export QUALYS_ACCESS_TOKEN="$QUALYS_ACCESS_TOKEN"
     - |
+      echo "QUALYS_POD value: [${QUALYS_POD}]"
+      echo "QUALYS_ACCESS_TOKEN set: $([ -n "$QUALYS_ACCESS_TOKEN" ] && echo YES || echo NO)"
       echo "Scanning image: $PYTHON_IMAGE"
       ./linux-amd64/qscanner image "$PYTHON_IMAGE" \
         --pod "$QUALYS_POD" \
@@ -127,6 +129,8 @@ scan-node-app:
     - docker pull "$NODE_IMAGE"
     - export QUALYS_ACCESS_TOKEN="$QUALYS_ACCESS_TOKEN"
     - |
+      echo "QUALYS_POD value: [${QUALYS_POD}]"
+      echo "QUALYS_ACCESS_TOKEN set: $([ -n "$QUALYS_ACCESS_TOKEN" ] && echo YES || echo NO)"
       echo "Scanning image: $NODE_IMAGE"
       ./linux-amd64/qscanner image "$NODE_IMAGE" \
         --pod "$QUALYS_POD" \
