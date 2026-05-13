@@ -16,6 +16,8 @@ variables:
   PYTHON_IMAGE_LATEST:     "$CI_REGISTRY_IMAGE/python-app:latest"
   NODE_IMAGE:              "$CI_REGISTRY_IMAGE/node-app:$CI_COMMIT_SHORT_SHA"
   NODE_IMAGE_LATEST:       "$CI_REGISTRY_IMAGE/node-app:latest"
+  DOCKER_HOST:             "unix:///var/run/docker.sock"
+  DOCKER_TLS_CERTDIR:      ""
 
 stages:
   - build
@@ -43,8 +45,6 @@ build-python-app:
   stage: build
   tags:
     - qualys-internal
-  services:
-    - docker:24.0.2-dind
   script:
     - docker build --tag "$PYTHON_IMAGE" --tag "$PYTHON_IMAGE_LATEST"
         --file apps/python-app/Dockerfile apps/python-app
@@ -64,8 +64,6 @@ build-node-app:
   stage: build
   tags:
     - qualys-internal
-  services:
-    - docker:24.0.2-dind
   script:
     - docker build --tag "$NODE_IMAGE" --tag "$NODE_IMAGE_LATEST"
         --file apps/node-app/Dockerfile apps/node-app
@@ -89,14 +87,9 @@ scan-python-app:
   stage: scan
   tags:
     - qualys-internal
-  services:
-    - docker:24.0.2-dind
   needs:
     - job: build-python-app
       artifacts: true
-  variables:
-    DOCKER_DRIVER: overlay2
-    DOCKER_TLS_CERTDIR: "/certs"
   script:
     - *download_qscanner
     - docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
@@ -132,14 +125,9 @@ scan-node-app:
   stage: scan
   tags:
     - qualys-internal
-  services:
-    - docker:24.0.2-dind
   needs:
     - job: build-node-app
       artifacts: true
-  variables:
-    DOCKER_DRIVER: overlay2
-    DOCKER_TLS_CERTDIR: "/certs"
   script:
     - *download_qscanner
     - docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
