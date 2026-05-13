@@ -1,0 +1,101 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [ main, develop, "feature/**", "release/**" ]
+  pull_request_target:
+    branches: [ main ]          # VULN: pull_request_target + untrusted checkout
+
+env:
+  REGISTRY: ghcr.io
+  PYTHON_IMAGE: ghcr.io/${{ github.repository }}/python-app
+  NODE_IMAGE:   ghcr.io/${{ github.repository }}/node-app
+
+jobs:
+
+  build-python:
+    name: Build Python App Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout (untrusted ref)
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}   # VULN: untrusted code execution
+
+      - name: Log in to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build Python image
+        run: |
+          docker build \
+            -t ${{ env.PYTHON_IMAGE }}:latest \
+            -t ${{ env.PYTHON_IMAGE }}:${{ github.sha }} \
+            ./apps/python-app
+
+      - name: Push Python image
+        run: |
+          docker push ${{ env.PYTHON_IMAGE }}:latest
+          docker push ${{ env.PYTHON_IMAGE }}:${{ github.sha }}
+
+      - name: Debug info                                   # VULN: secrets in logs
+        run: |
+          echo "AWS key: ${{ secrets.AWS_ACCESS_KEY_ID }}"
+          env | sort
+
+  build-node:
+    name: Build Node.js App Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Log in to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build Node.js image
+        run: |
+          docker build \
+            -t ${{ env.NODE_IMAGE }}:latest \
+            -t ${{ env.NODE_IMAGE }}:${{ github.sha }} \
+            ./apps/node-app
+
+      - name: Push Node.js image
+        run: |
+          docker push ${{ env.NODE_IMAGE }}:latest
+          docker push ${{ env.NODE_IMAGE }}:${{ github.sha }}
+
+  deploy:
+    name: Deploy (self-hosted)
+    runs-on: self-hosted                                   # VULN: self-hosted runner, no isolation
+    needs: [ build-python, build-node ]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Pull and run Python app
+        run: |
+          docker pull ${{ env.PYTHON_IMAGE }}:latest
+          docker run -d \
+            --privileged \                                  # VULN: privileged container
+            -p 5000:5000 \
+            --name python-app \
+            ${{ env.PYTHON_IMAGE }}:latest
+
+      - name: Pull and run Node.js app
+        run: |
+          docker pull ${{ env.NODE_IMAGE }}:latest
+          docker run -d \
+            --privileged \                                  # VULN: privileged container
+            -p 3000:3000 \
+            --name node-app \
+            ${{ env.NODE_IMAGE }}:latest

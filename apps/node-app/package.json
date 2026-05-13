@@ -1,0 +1,19 @@
+{
+  "name": "node-vuln-app",
+  "version": "1.0.0",
+  "description": "Intentionally vulnerable Node.js app for qscanner demo",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "4.17.1",
+    "lodash": "4.17.15",
+    "mysql": "2.18.1",
+    "minimist": "1.2.0",
+    "serialize-javascript": "2.1.1",
+    "axios": "0.21.1",
+    "node-fetch": "2.6.1",
+    "tar": "4.4.13"
+  }
+}

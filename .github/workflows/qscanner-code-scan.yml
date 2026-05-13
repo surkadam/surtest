@@ -1,0 +1,79 @@
+name: qscanner Code + Pipeline Scan
+
+on:
+  push:
+    branches: [ main, develop, "feature/**", "release/**" ]
+  workflow_dispatch:
+
+jobs:
+
+  scan-python-app:
+    name: Scan Python App (code + image association)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download qscanner
+        run: |
+          curl -sSfL \
+            "https://${{ secrets.QUALYS_POD }}/qscanner/qscanner-linux" \
+            -o qscanner
+          chmod +x qscanner
+
+      - name: qscanner — Python app code scan
+        run: |
+          ./qscanner code ./apps/python-app \
+            --pod "${{ secrets.QUALYS_POD }}" \
+            --client-id "${{ secrets.QUALYS_CLIENT_ID }}" \
+            --client-secret "${{ secrets.QUALYS_CLIENT_SECRET }}" \
+            --skip-verify-tls \
+            -l debug \
+            --image "ghcr.io/${{ github.repository }}/python-app:${{ github.sha }}"
+
+  scan-node-app:
+    name: Scan Node.js App (code + image association)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download qscanner
+        run: |
+          curl -sSfL \
+            "https://${{ secrets.QUALYS_POD }}/qscanner/qscanner-linux" \
+            -o qscanner
+          chmod +x qscanner
+
+      - name: qscanner — Node.js app code scan
+        run: |
+          ./qscanner code ./apps/node-app \
+            --pod "${{ secrets.QUALYS_POD }}" \
+            --client-id "${{ secrets.QUALYS_CLIENT_ID }}" \
+            --client-secret "${{ secrets.QUALYS_CLIENT_SECRET }}" \
+            --skip-verify-tls \
+            -l debug \
+            --image "ghcr.io/${{ github.repository }}/node-app:${{ github.sha }}"
+
+  scan-pipeline:
+    name: Scan CI Pipeline (workflow files)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download qscanner
+        run: |
+          curl -sSfL \
+            "https://${{ secrets.QUALYS_POD }}/qscanner/qscanner-linux" \
+            -o qscanner
+          chmod +x qscanner
+
+      - name: qscanner — pipeline/workflow scan
+        run: |
+          ./qscanner pipeline .github/workflows \
+            --pod "${{ secrets.QUALYS_POD }}" \
+            --client-id "${{ secrets.QUALYS_CLIENT_ID }}" \
+            --client-secret "${{ secrets.QUALYS_CLIENT_SECRET }}" \
+            --skip-verify-tls \
+            -l debug
