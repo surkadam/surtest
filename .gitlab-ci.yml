@@ -1,47 +1,76 @@
 stages:
-  - build_and_scan
+  - build
+  - scan
 
 variables:
-  QUALYS_POD:   "ENG-POD01"
-  GHCR_ORG:     "surkadam"
-  DOCKER_DRIVER: overlay2
+  QUALYS_POD:         "ENG-POD01"
+  GHCR_ORG:           "surkadam"
+  DOCKER_DRIVER:      overlay2
   DOCKER_TLS_CERTDIR: ""
+  # Set QSCANNER_BINARY_URL in GitLab CI/CD Variables (Settings → CI/CD → Variables)
+  # Get the URL from: https://jenkins.intranet.qualys.com/job/CS-Sensor/job/QScanner/job/develop/
+  # → Latest build → right-click qscanner artifact → Copy link address
+  # QSCANNER_BINARY_URL: "https://jenkins.intranet.qualys.com/job/CS-Sensor/job/QScanner/job/develop/lastSuccessfulBuild/artifact/qscanner"
 
-# ── Shared setup script ────────────────────────────────────────────────────────
-.setup_env: &setup_env |
-  BRANCH_TAG=$(echo "${CI_COMMIT_BRANCH:-$CI_DEFAULT_BRANCH}" | sed 's/\//-/g')
-  PYTHON_IMAGE="ghcr.io/${GHCR_ORG}/qscanner-demo/python-app:${BRANCH_TAG}"
-  NODE_IMAGE="ghcr.io/${GHCR_ORG}/qscanner-demo/node-app:${BRANCH_TAG}"
-  echo "Branch   : ${BRANCH_TAG}"
-  echo "Commit   : ${CI_COMMIT_SHA}"
-  echo "Python   : ${PYTHON_IMAGE}"
-  echo "Node     : ${NODE_IMAGE}"
+# ── Reusable: derive image tag from branch name ────────────────────────────────
+.set_image_vars: &set_image_vars
+  - BRANCH_TAG=$(echo "${CI_COMMIT_BRANCH:-unknown}" | sed 's/\//-/g')
+  - PYTHON_IMAGE="ghcr.io/${GHCR_ORG}/qscanner-demo/python-app:${BRANCH_TAG}"
+  - NODE_IMAGE="ghcr.io/${GHCR_ORG}/qscanner-demo/node-app:${BRANCH_TAG}"
+  - echo "Branch  ${BRANCH_TAG}  Commit  ${CI_COMMIT_SHA}"
 
-# ── Download qscanner if not pre-installed ─────────────────────────────────────
-.get_qscanner: &get_qscanner |
-  if [ ! -f "./qscanner" ]; then
-    echo "[INFO] qscanner not found — downloading..."
-    curl -fsSL "${QSCANNER_DOWNLOAD_URL}" -o qscanner
-    chmod +x qscanner
-  fi
-  ./qscanner --version || true
+# ── Reusable: download qscanner 5.1.0 binary ──────────────────────────────────
+.get_qscanner: &get_qscanner
+  - echo "[qscanner] Downloading binary from Jenkins..."
+  - curl -fsSL --user "${JENKINS_USER}:${JENKINS_TOKEN}" "${QSCANNER_BINARY_URL}" -o qscanner
+  - chmod +x qscanner
+  - ./qscanner --version
 
-# ── Python App: Build → Image Scan → Code Scan ────────────────────────────────
-scan_python_app:
-  stage: build_and_scan
+# ═══════════════════════════════════════════════════════════════════════════════
+# STAGE 1 — BUILD
+# ═══════════════════════════════════════════════════════════════════════════════
+
+build_python_app:
+  stage: build
   image: docker:24
   services:
     - docker:24-dind
   script:
-    - *setup_env
-
-    # 1. Build Docker image
+    - *set_image_vars
     - docker build -t "${PYTHON_IMAGE}" ./apps/python-app
+    - echo "PYTHON_IMAGE=${PYTHON_IMAGE}" > python.env
+  artifacts:
+    reports:
+      dotenv: python.env
 
-    # 2. Get qscanner binary
+build_node_app:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  script:
+    - *set_image_vars
+    - docker build -t "${NODE_IMAGE}" ./apps/node-app
+    - echo "NODE_IMAGE=${NODE_IMAGE}" > node.env
+  artifacts:
+    reports:
+      dotenv: node.env
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STAGE 2 — QUALYS IMAGE SCAN
+# ═══════════════════════════════════════════════════════════════════════════════
+
+scan_python_image:
+  stage: scan
+  image: docker:24
+  services:
+    - docker:24-dind
+  needs:
+    - job: build_python_app
+      artifacts: true
+  script:
+    - *set_image_vars
     - *get_qscanner
-
-    # 3. Image scan — populates /images/pivot_list with build pipeline metadata
     - |
       ./qscanner image "${PYTHON_IMAGE}" \
         --pod "${QUALYS_POD}" \
@@ -50,41 +79,21 @@ scan_python_app:
         --client-id "${QUALYS_CLIENT_ID}" \
         --client-secret "${QUALYS_CLIENT_SECRET}" \
         --collect-build-pipeline-metadata=true
-
-    # 4. Code scan — links code findings to the image (populates Associated Images)
-    - |
-      ./qscanner code ./apps/python-app \
-        --pod "${QUALYS_POD}" \
-        --skip-verify-tls \
-        -l debug \
-        --client-id "${QUALYS_CLIENT_ID}" \
-        --client-secret "${QUALYS_CLIENT_SECRET}" \
-        --image "${PYTHON_IMAGE}"
-
   after_script:
-    - |
-      BRANCH_TAG=$(echo "${CI_COMMIT_BRANCH:-$CI_DEFAULT_BRANCH}" | sed 's/\//-/g')
-      echo "=== pivot_list query ==="
-      echo "buildPipelineMetadata.repositoryMetadata.repository:\"https://gitlab.com/surkadam/qscanner-demo.git\""
-      echo "AND buildPipelineMetadata.repositoryMetadata.branch:\"${BRANCH_TAG}\""
-      echo "AND buildPipelineMetadata.repositoryMetadata.commits.hash:\"${CI_COMMIT_SHA}\""
+    - BRANCH_TAG=$(echo "${CI_COMMIT_BRANCH:-unknown}" | sed 's/\//-/g')
+    - echo "Query → buildPipelineMetadata.repositoryMetadata.repository:\"https://gitlab.com/surkadam/qscanner-demo.git\" AND buildPipelineMetadata.repositoryMetadata.branch:\"${BRANCH_TAG}\" AND buildPipelineMetadata.repositoryMetadata.commits.hash:\"${CI_COMMIT_SHA}\""
 
-# ── Node App: Build → Image Scan → Code Scan ──────────────────────────────────
-scan_node_app:
-  stage: build_and_scan
+scan_node_image:
+  stage: scan
   image: docker:24
   services:
     - docker:24-dind
+  needs:
+    - job: build_node_app
+      artifacts: true
   script:
-    - *setup_env
-
-    # 1. Build Docker image
-    - docker build -t "${NODE_IMAGE}" ./apps/node-app
-
-    # 2. Get qscanner binary
+    - *set_image_vars
     - *get_qscanner
-
-    # 3. Image scan
     - |
       ./qscanner image "${NODE_IMAGE}" \
         --pod "${QUALYS_POD}" \
@@ -93,13 +102,3 @@ scan_node_app:
         --client-id "${QUALYS_CLIENT_ID}" \
         --client-secret "${QUALYS_CLIENT_SECRET}" \
         --collect-build-pipeline-metadata=true
-
-    # 4. Code scan
-    - |
-      ./qscanner code ./apps/node-app \
-        --pod "${QUALYS_POD}" \
-        --skip-verify-tls \
-        -l debug \
-        --client-id "${QUALYS_CLIENT_ID}" \
-        --client-secret "${QUALYS_CLIENT_SECRET}" \
-        --image "${NODE_IMAGE}"
