@@ -1,11 +1,15 @@
 source 'https://rubygems.org'
 
+ruby '2.6.0'
+
 # Intentionally vulnerable gems for qscanner demo
-gem 'sinatra',        '2.0.0'       # CVE-2022-45442
-gem 'rack',           '2.0.6'       # CVE-2019-16782, CVE-2020-8184
-gem 'nokogiri',       '1.8.5'       # CVE-2018-14404, CVE-2019-5477
-gem 'loofah',         '2.2.3'       # CVE-2019-15587
-gem 'puma',           '3.12.0'      # CVE-2019-16770, CVE-2020-5247
-gem 'json',           '2.2.0'       # CVE-2020-10663
-gem 'rexml',          '3.2.4'       # CVE-2021-28965
-gem 'addressable',    '2.7.0'       # CVE-2021-32740
+gem 'rails',          '5.0.0'       # CVE-2016-6316, CVE-2018-3760
+gem 'activerecord',   '5.0.0'       # SQL injection CVEs
+gem 'activesupport',  '5.0.0'       # CVE-2020-8165
+gem 'rack',           '2.0.1'       # CVE-2018-16471, CVE-2019-16782
+gem 'nokogiri',       '1.8.0'       # CVE-2018-14404, CVE-2019-5477
+gem 'loofah',         '2.2.0'       # CVE-2018-8048, CVE-2019-15587
+gem 'devise',         '4.2.0'       # CVE-2019-5421
+gem 'puma',           '3.11.0'      # CVE-2019-16770, CVE-2020-5247
+gem 'sprockets',      '3.7.1'       # CVE-2018-3760
+gem 'json',           '1.8.6'       # CVE-2020-10663
