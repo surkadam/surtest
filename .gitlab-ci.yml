@@ -24,7 +24,7 @@ variables:
 stages:
   - build
   - scan
-
+#test change
 # ── Reusable: download qscanner 5.x from GitLab Package Registry ─────────────
 .download_qscanner: &download_qscanner
   - apk add --no-cache curl
