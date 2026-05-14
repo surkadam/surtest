@@ -16,6 +16,8 @@ variables:
   PYTHON_IMAGE_LATEST:     "$CI_REGISTRY_IMAGE/python-app:latest"
   NODE_IMAGE:              "$CI_REGISTRY_IMAGE/node-app:$CI_COMMIT_SHORT_SHA"
   NODE_IMAGE_LATEST:       "$CI_REGISTRY_IMAGE/node-app:latest"
+  RAILS_IMAGE:             "$CI_REGISTRY_IMAGE/rails-app:$CI_COMMIT_SHORT_SHA"
+  RAILS_IMAGE_LATEST:      "$CI_REGISTRY_IMAGE/rails-app:latest"
   DOCKER_HOST:             "unix:///var/run/docker.sock"
   DOCKER_TLS_CERTDIR:      ""
   QSCANNER_VERSION:        "5.1.0"
@@ -84,6 +86,25 @@ build-node-app:
     paths:
       - node_image_id.txt
 
+build-rails-app:
+  image: docker:27
+  stage: build
+  tags:
+    - qualys-internal
+  script:
+    - docker build --tag "$RAILS_IMAGE" --tag "$RAILS_IMAGE_LATEST"
+        --file apps/rails-app/Dockerfile apps/rails-app
+    - docker login --username gitlab-ci-token --password "$CI_JOB_TOKEN" "$CI_REGISTRY"
+    - docker push "$RAILS_IMAGE"
+    - docker push "$RAILS_IMAGE_LATEST"
+    - |
+      IMAGE_ID=$(docker inspect --format='{{.Id}}' "$RAILS_IMAGE" | sed 's/^sha256://')
+      echo "IMAGE_ID: $IMAGE_ID"
+      echo "$IMAGE_ID" > rails_image_id.txt
+  artifacts:
+    paths:
+      - rails_image_id.txt
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # STAGE 2 — QUALYS IMAGE SCAN
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -106,6 +127,33 @@ scan-python-app:
       echo "QUALYS_ACCESS_TOKEN set: $([ -n "$QUALYS_ACCESS_TOKEN" ] && echo YES || echo NO)"
       echo "Scanning image: $PYTHON_IMAGE"
       ./linux-amd64/qscanner image "$PYTHON_IMAGE" \
+        --pod "$QUALYS_POD" \
+        -l debug \
+        --scan-types pkg \
+        --skip-verify-tls \
+        --collect-build-pipeline-metadata=true \
+        -o "$OUTPUT_DIR" || QSCANNER_RC=$?
+      echo "qscanner exit code: ${QSCANNER_RC:-0}"
+      exit 0
+
+scan-rails-app:
+  image: docker:27
+  stage: scan
+  tags:
+    - qualys-internal
+  needs:
+    - job: build-rails-app
+      artifacts: true
+  script:
+    - *download_qscanner
+    - docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
+    - docker pull "$RAILS_IMAGE"
+    - export QUALYS_ACCESS_TOKEN="$QUALYS_ACCESS_TOKEN"
+    - |
+      echo "QUALYS_POD value: [${QUALYS_POD}]"
+      echo "QUALYS_ACCESS_TOKEN set: $([ -n "$QUALYS_ACCESS_TOKEN" ] && echo YES || echo NO)"
+      echo "Scanning image: $RAILS_IMAGE"
+      ./linux-amd64/qscanner image "$RAILS_IMAGE" \
         --pod "$QUALYS_POD" \
         -l debug \
         --scan-types pkg \
