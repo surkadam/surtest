@@ -66,15 +66,19 @@ scan-code:
       echo "QUALYS_POD: [${QUALYS_POD}]"
       echo "QUALYS_CLIENT_ID set: $([ -n "$QUALYS_CLIENT_ID" ] && echo YES || echo NO)"
       echo "QUALYS_CLIENT_SECRET set: $([ -n "$QUALYS_CLIENT_SECRET" ] && echo YES || echo NO)"
-      echo "Scanning repo: ${CODE_REPO_URL} (triggered by branch: ${CI_COMMIT_REF_NAME})"
-      ./linux-amd64/qscanner code "${CODE_REPO_URL}" \
+      echo "Cloning branch ${CI_COMMIT_REF_NAME} (shallow) for code scan..."
+      apk add --no-cache git
+      git clone --branch "$CI_COMMIT_REF_NAME" --single-branch --depth 1 \
+        "https://oauth2:${QUALYS_REGISTRY_TOKEN}@gitlab.com/surkadam/qscanner-demo.git" \
+        ./scan-target
+      echo "Scanning branch: ${CI_COMMIT_REF_NAME}"
+      ./linux-amd64/qscanner code "./scan-target" \
         --pod "$QUALYS_POD" \
         --skip-verify-tls \
         -l debug \
         --collect-build-pipeline-metadata=true \
         --client-id "$QUALYS_CLIENT_ID" \
-        --client-secret "$QUALYS_CLIENT_SECRET" \
-        --registry-token "$QUALYS_REGISTRY_TOKEN" || SCAN_RC=$?
+        --client-secret "$QUALYS_CLIENT_SECRET" || SCAN_RC=$?
       echo "qscanner code scan exit code: ${SCAN_RC:-0}"
       if [ "${SCAN_RC:-0}" -eq 40 ]; then
         echo "Exit 40: scan submitted, report not yet available (non-fatal)"
