@@ -68,7 +68,6 @@ scan-code:
         --pod "$QUALYS_POD" \
         --skip-verify-tls \
         -l debug \
-        --branch "$CI_COMMIT_REF_NAME" \
         --collect-build-pipeline-metadata=true \
         --client-id "$QUALYS_CLIENT_ID" \
         --client-secret "$QUALYS_CLIENT_SECRET" \
