@@ -66,16 +66,14 @@ scan-code:
       echo "QUALYS_POD: [${QUALYS_POD}]"
       echo "QUALYS_CLIENT_ID set: $([ -n "$QUALYS_CLIENT_ID" ] && echo YES || echo NO)"
       echo "QUALYS_CLIENT_SECRET set: $([ -n "$QUALYS_CLIENT_SECRET" ] && echo YES || echo NO)"
-      echo "QUALYS_REGISTRY_TOKEN set: $([ -n "$QUALYS_REGISTRY_TOKEN" ] && echo YES || echo NO)"
-      echo "Running qscanner code scan on: ${CODE_REPO_URL} (branch: ${CI_COMMIT_REF_NAME})"
-      ./linux-amd64/qscanner code "${CODE_REPO_URL}" \
+      echo "Scanning branch: ${CI_COMMIT_REF_NAME} (local checkout at: $CI_PROJECT_DIR)"
+      ./linux-amd64/qscanner code "$CI_PROJECT_DIR" \
         --pod "$QUALYS_POD" \
         --skip-verify-tls \
         -l debug \
         --collect-build-pipeline-metadata=true \
         --client-id "$QUALYS_CLIENT_ID" \
-        --client-secret "$QUALYS_CLIENT_SECRET" \
-        --registry-token "$QUALYS_REGISTRY_TOKEN"
+        --client-secret "$QUALYS_CLIENT_SECRET"
       echo "qscanner code scan exit code: $?"
 
 # ═══════════════════════════════════════════════════════════════════════════════
