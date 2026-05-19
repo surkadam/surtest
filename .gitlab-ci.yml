@@ -1,13 +1,17 @@
 # ============================================================
-# GitLab CI/CD Pipeline — Qualys QScanner Image Scanning
+# GitLab CI/CD Pipeline — Qualys QScanner: Code → Build → Image Scan
 # ============================================================
 #
 # Required GitLab CI/CD Variables (Settings → CI/CD → Variables):
 #   QUALYS_ACCESS_TOKEN   — Qualys JWT access token          (Masked)
 #   QUALYS_POD            — Qualys pod name, e.g. ENG-POD01
+#   QUALYS_CLIENT_ID      — Qualys OAuth client ID           (Masked)
+#   QUALYS_CLIENT_SECRET  — Qualys OAuth client secret       (Masked)
 #
-# Optional overrides:
-#   OUTPUT_DIR            — QScanner output dir (default: /usr/local/qualys/qscanner/data/)
+# Pipeline flow:
+#   1. code-scan  — runs automatically on every commit (qscanner code)
+#   2. build      — triggered manually when image build is needed
+#   3. image-scan — runs automatically after build completes
 # ============================================================
 
 variables:
@@ -22,11 +26,13 @@ variables:
   DOCKER_TLS_CERTDIR:      ""
   QSCANNER_VERSION:        "5.1.0"
   QSCANNER_PKG_URL:        "https://gitlab.com/api/v4/projects/82155352/packages/generic/qscanner/${QSCANNER_VERSION}/qscanner"
+  CODE_REPO_URL:           "https://github.com/surkadam/surtest.git"
 
 stages:
+  - code-scan
   - build
-  - scan
-#test change
+  - image-scan
+
 # ── Reusable: download qscanner 5.x from GitLab Package Registry ─────────────
 .download_qscanner: &download_qscanner
   - apk add --no-cache curl
@@ -45,16 +51,40 @@ stages:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STAGE 1 — BUILD
+# STAGE 1 — CODE SCAN (auto-runs on every commit)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+scan-code:
+  image: docker:27
+  stage: code-scan
+  tags:
+    - qualys-internal
+  script:
+    - *download_qscanner
+    - |
+      echo "Running qscanner code scan on: ${CODE_REPO_URL}"
+      ./linux-amd64/qscanner code "${CODE_REPO_URL}" \
+        --pod "$QUALYS_POD" \
+        --skip-verify-tls \
+        -l debug \
+        --client-id "$QUALYS_CLIENT_ID" \
+        --client-secret "$QUALYS_CLIENT_SECRET" || QSCANNER_RC=$?
+      echo "qscanner code scan exit code: ${QSCANNER_RC:-0}"
+      exit 0
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STAGE 2 — BUILD (manual trigger — run only when image scan is needed)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 build-python-app:
   image: docker:27
   stage: build
+  when: manual
   tags:
     - qualys-internal
   script:
     - docker build --tag "$PYTHON_IMAGE" --tag "$PYTHON_IMAGE_LATEST"
+        --build-arg GIT_COMMIT="$CI_COMMIT_SHORT_SHA"
         --file apps/python-app/Dockerfile apps/python-app
     - docker login --username gitlab-ci-token --password "$CI_JOB_TOKEN" "$CI_REGISTRY"
     - docker push "$PYTHON_IMAGE"
@@ -70,10 +100,12 @@ build-python-app:
 build-node-app:
   image: docker:27
   stage: build
+  when: manual
   tags:
     - qualys-internal
   script:
     - docker build --tag "$NODE_IMAGE" --tag "$NODE_IMAGE_LATEST"
+        --build-arg GIT_COMMIT="$CI_COMMIT_SHORT_SHA"
         --file apps/node-app/Dockerfile apps/node-app
     - docker login --username gitlab-ci-token --password "$CI_JOB_TOKEN" "$CI_REGISTRY"
     - docker push "$NODE_IMAGE"
@@ -89,10 +121,12 @@ build-node-app:
 build-rails-app:
   image: docker:27
   stage: build
+  when: manual
   tags:
     - qualys-internal
   script:
     - docker build --tag "$RAILS_IMAGE" --tag "$RAILS_IMAGE_LATEST"
+        --build-arg GIT_COMMIT="$CI_COMMIT_SHORT_SHA"
         --file apps/rails-app/Dockerfile apps/rails-app
     - docker login --username gitlab-ci-token --password "$CI_JOB_TOKEN" "$CI_REGISTRY"
     - docker push "$RAILS_IMAGE"
@@ -106,12 +140,12 @@ build-rails-app:
       - rails_image_id.txt
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STAGE 2 — QUALYS IMAGE SCAN
+# STAGE 3 — IMAGE SCAN (auto-runs after build)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 scan-python-app:
   image: docker:27
-  stage: scan
+  stage: image-scan
   tags:
     - qualys-internal
   needs:
@@ -138,7 +172,7 @@ scan-python-app:
 
 scan-rails-app:
   image: docker:27
-  stage: scan
+  stage: image-scan
   tags:
     - qualys-internal
   needs:
@@ -165,7 +199,7 @@ scan-rails-app:
 
 scan-node-app:
   image: docker:27
-  stage: scan
+  stage: image-scan
   tags:
     - qualys-internal
   needs:
