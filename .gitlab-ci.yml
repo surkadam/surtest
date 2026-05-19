@@ -66,15 +66,21 @@ scan-code:
       echo "QUALYS_POD: [${QUALYS_POD}]"
       echo "QUALYS_CLIENT_ID set: $([ -n "$QUALYS_CLIENT_ID" ] && echo YES || echo NO)"
       echo "QUALYS_CLIENT_SECRET set: $([ -n "$QUALYS_CLIENT_SECRET" ] && echo YES || echo NO)"
-      echo "Scanning branch: ${CI_COMMIT_REF_NAME} (local checkout at: $CI_PROJECT_DIR)"
-      ./linux-amd64/qscanner code "$CI_PROJECT_DIR" \
+      echo "Scanning repo: ${CODE_REPO_URL} (triggered by branch: ${CI_COMMIT_REF_NAME})"
+      ./linux-amd64/qscanner code "${CODE_REPO_URL}" \
         --pod "$QUALYS_POD" \
         --skip-verify-tls \
         -l debug \
         --collect-build-pipeline-metadata=true \
         --client-id "$QUALYS_CLIENT_ID" \
-        --client-secret "$QUALYS_CLIENT_SECRET"
-      echo "qscanner code scan exit code: $?"
+        --client-secret "$QUALYS_CLIENT_SECRET" \
+        --registry-token "$QUALYS_REGISTRY_TOKEN" || SCAN_RC=$?
+      echo "qscanner code scan exit code: ${SCAN_RC:-0}"
+      if [ "${SCAN_RC:-0}" -eq 40 ]; then
+        echo "Exit 40: scan submitted, report not yet available (non-fatal)"
+        exit 0
+      fi
+      exit ${SCAN_RC:-0}
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STAGE 2 — BUILD (manual trigger — run only when image scan is needed)
