@@ -62,7 +62,7 @@ scan-code:
   script:
     - *download_qscanner
     - |
-      echo "Running qscanner code scan on: ${CODE_REPO_URL}"
+      echo "Running qscanner code scan on: ${CODE_REPO_URL} (branch: ${CI_COMMIT_REF_NAME})"
       ./linux-amd64/qscanner code "${CODE_REPO_URL}" \
         --pod "$QUALYS_POD" \
         --skip-verify-tls \
@@ -70,9 +70,8 @@ scan-code:
         --branch "$CI_COMMIT_REF_NAME" \
         --collect-build-pipeline-metadata=true \
         --client-id "$QUALYS_CLIENT_ID" \
-        --client-secret "$QUALYS_CLIENT_SECRET" || QSCANNER_RC=$?
-      echo "qscanner code scan exit code: ${QSCANNER_RC:-0}"
-      exit 0
+        --client-secret "$QUALYS_CLIENT_SECRET"
+      echo "qscanner code scan exit code: $?"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STAGE 2 — BUILD (manual trigger — run only when image scan is needed)
