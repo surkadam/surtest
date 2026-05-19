@@ -7,6 +7,7 @@
 #   QUALYS_POD            — Qualys pod name, e.g. ENG-POD01
 #   QUALYS_CLIENT_ID      — Qualys OAuth client ID           (Masked)
 #   QUALYS_CLIENT_SECRET  — Qualys OAuth client secret       (Masked)
+#   QUALYS_REGISTRY_TOKEN — GitLab PAT for repo access       (Masked)
 #
 # Pipeline flow:
 #   1. code-scan  — runs automatically on every commit (qscanner code)
@@ -26,7 +27,7 @@ variables:
   DOCKER_TLS_CERTDIR:      ""
   QSCANNER_VERSION:        "5.1.0"
   QSCANNER_PKG_URL:        "https://gitlab.com/api/v4/projects/82155352/packages/generic/qscanner/${QSCANNER_VERSION}/qscanner"
-  CODE_REPO_URL:           "https://github.com/surkadam/surtest.git"
+  CODE_REPO_URL:           "https://gitlab.com/surkadam/qscanner-demo.git"
 
 stages:
   - code-scan
@@ -62,7 +63,7 @@ scan-code:
   script:
     - *download_qscanner
     - |
-      echo "Running qscanner code scan on: ${CODE_REPO_URL}"
+      echo "Running qscanner code scan on: ${CODE_REPO_URL} (branch: ${CI_COMMIT_REF_NAME})"
       ./linux-amd64/qscanner code "${CODE_REPO_URL}" \
         --pod "$QUALYS_POD" \
         --skip-verify-tls \
@@ -70,9 +71,9 @@ scan-code:
         --branch "$CI_COMMIT_REF_NAME" \
         --collect-build-pipeline-metadata=true \
         --client-id "$QUALYS_CLIENT_ID" \
-        --client-secret "$QUALYS_CLIENT_SECRET" || QSCANNER_RC=$?
-      echo "qscanner code scan exit code: ${QSCANNER_RC:-0}"
-      exit 0
+        --client-secret "$QUALYS_CLIENT_SECRET" \
+        --registry-token "$QUALYS_REGISTRY_TOKEN"
+      echo "qscanner code scan exit code: $?"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STAGE 2 — BUILD (manual trigger — run only when image scan is needed)
