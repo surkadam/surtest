@@ -63,6 +63,10 @@ scan-code:
   script:
     - *download_qscanner
     - |
+      echo "QUALYS_POD: [${QUALYS_POD}]"
+      echo "QUALYS_CLIENT_ID set: $([ -n "$QUALYS_CLIENT_ID" ] && echo YES || echo NO)"
+      echo "QUALYS_CLIENT_SECRET set: $([ -n "$QUALYS_CLIENT_SECRET" ] && echo YES || echo NO)"
+      echo "QUALYS_REGISTRY_TOKEN set: $([ -n "$QUALYS_REGISTRY_TOKEN" ] && echo YES || echo NO)"
       echo "Running qscanner code scan on: ${CODE_REPO_URL} (branch: ${CI_COMMIT_REF_NAME})"
       ./linux-amd64/qscanner code "${CODE_REPO_URL}" \
         --pod "$QUALYS_POD" \
