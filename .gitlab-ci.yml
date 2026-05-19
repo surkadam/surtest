@@ -67,6 +67,7 @@ scan-code:
         --pod "$QUALYS_POD" \
         --skip-verify-tls \
         -l debug \
+        --branch "$CI_COMMIT_REF_NAME" \
         --client-id "$QUALYS_CLIENT_ID" \
         --client-secret "$QUALYS_CLIENT_SECRET" || QSCANNER_RC=$?
       echo "qscanner code scan exit code: ${QSCANNER_RC:-0}"
