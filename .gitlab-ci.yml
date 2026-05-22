@@ -40,7 +40,7 @@ stages:
   - mkdir -p linux-amd64
   - |
     echo "Downloading qscanner ${QSCANNER_VERSION} from Jenkins..."
-    curl --silent --fail --location \
+    curl --silent --fail --location --insecure \
       --output qscanner.tar.gz \
       "${QSCANNER_PKG_URL}"
     tar -xzf qscanner.tar.gz
