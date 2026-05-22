@@ -8,6 +8,8 @@
 #   QUALYS_CLIENT_ID      — Qualys OAuth client ID           (Masked)
 #   QUALYS_CLIENT_SECRET  — Qualys OAuth client secret       (Masked)
 #   QUALYS_REGISTRY_TOKEN — GitLab PAT for repo access       (Masked)
+#   JENKINS_USER          — Jenkins username for artifact download
+#   JENKINS_TOKEN         — Jenkins API token                 (Masked)
 #
 # Pipeline flow:
 #   1. code-scan  — runs automatically on every commit (qscanner code)
@@ -40,11 +42,10 @@ stages:
   - mkdir -p linux-amd64
   - |
     echo "Downloading qscanner ${QSCANNER_VERSION} from Jenkins..."
-    curl --verbose --location --insecure \
+    curl --silent --fail --location --insecure \
+      --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
       --output qscanner.tar.gz \
       "${QSCANNER_PKG_URL}"
-    echo "curl exit code: $?"
-    ls -lh qscanner.tar.gz || echo "File not downloaded"
     tar -xzf qscanner.tar.gz
     QSCANNER_BIN=$(find . -maxdepth 2 -name 'qscanner*' -type f ! -name '*.tar.gz' | head -1)
     echo "Found binary: ${QSCANNER_BIN}"
