@@ -40,9 +40,11 @@ stages:
   - mkdir -p linux-amd64
   - |
     echo "Downloading qscanner ${QSCANNER_VERSION} from Jenkins..."
-    curl --silent --fail --location --insecure \
+    curl --verbose --location --insecure \
       --output qscanner.tar.gz \
       "${QSCANNER_PKG_URL}"
+    echo "curl exit code: $?"
+    ls -lh qscanner.tar.gz || echo "File not downloaded"
     tar -xzf qscanner.tar.gz
     QSCANNER_BIN=$(find . -maxdepth 2 -name 'qscanner*' -type f ! -name '*.tar.gz' | head -1)
     echo "Found binary: ${QSCANNER_BIN}"
