@@ -25,8 +25,8 @@ variables:
   RAILS_IMAGE_LATEST:      "$CI_REGISTRY_IMAGE/rails-app:latest"
   DOCKER_HOST:             "unix:///var/run/docker.sock"
   DOCKER_TLS_CERTDIR:      ""
-  QSCANNER_VERSION:        "5.1.0"
-  QSCANNER_PKG_URL:        "https://gitlab.com/api/v4/projects/82155352/packages/generic/qscanner/${QSCANNER_VERSION}/qscanner"
+  QSCANNER_VERSION:        "5.1.0-10-dev"
+  QSCANNER_PKG_URL:        "https://jenkins.intranet.qualys.com/job/CS-Sensor/job/QScanner/job/release%252F5.1.0/10/artifact/output/qscanner-${QSCANNER_VERSION}.linux-amd64.tar.gz"
   CODE_REPO_URL:           "https://gitlab.com/surkadam/qscanner-demo.git"
 
 stages:
@@ -36,14 +36,18 @@ stages:
 
 # ── Reusable: download qscanner 5.x from GitLab Package Registry ─────────────
 .download_qscanner: &download_qscanner
-  - apk add --no-cache curl
+  - apk add --no-cache curl tar
   - mkdir -p linux-amd64
   - |
-    echo "Downloading qscanner ${QSCANNER_VERSION} from GitLab Package Registry..."
+    echo "Downloading qscanner ${QSCANNER_VERSION} from Jenkins..."
     curl --silent --fail --location \
-      --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-      --output linux-amd64/qscanner \
+      --output qscanner.tar.gz \
       "${QSCANNER_PKG_URL}"
+    tar -xzf qscanner.tar.gz
+    QSCANNER_BIN=$(find . -maxdepth 2 -name 'qscanner*' -type f ! -name '*.tar.gz' | head -1)
+    echo "Found binary: ${QSCANNER_BIN}"
+    mv "${QSCANNER_BIN}" linux-amd64/qscanner
+    rm -f qscanner.tar.gz
   - chmod +x ./linux-amd64/qscanner
   - ./linux-amd64/qscanner --version
   - export HOME="$CI_PROJECT_DIR"
