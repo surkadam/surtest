@@ -14,7 +14,6 @@
 #   2. build      — triggered manually when image build is needed
 #   3. image-scan — runs automatically after build completes
 # ============================================================
-#check auto merge
 variables:
   OUTPUT_DIR:              "/usr/local/qualys/qscanner/data/"
   PYTHON_IMAGE:            "$CI_REGISTRY_IMAGE/python-app:$CI_COMMIT_SHORT_SHA"
@@ -23,8 +22,9 @@ variables:
   NODE_IMAGE_LATEST:       "$CI_REGISTRY_IMAGE/node-app:latest"
   RAILS_IMAGE:             "$CI_REGISTRY_IMAGE/rails-app:$CI_COMMIT_SHORT_SHA"
   RAILS_IMAGE_LATEST:      "$CI_REGISTRY_IMAGE/rails-app:latest"
-  DOCKER_HOST:             "unix:///var/run/docker.sock"
+  DOCKER_HOST:             "tcp://docker:2375"
   DOCKER_TLS_CERTDIR:      ""
+  DOCKER_DRIVER:           "overlay2"
   QSCANNER_VERSION:        "5.1.0-9-dev"
   QSCANNER_PKG_URL:        "https://gitlab.com/api/v4/projects/82155352/packages/generic/qscanner/${QSCANNER_VERSION}/qscanner"
   CODE_REPO_URL:           "https://gitlab.com/surkadam/qscanner-demo.git"
@@ -94,6 +94,8 @@ build-python-app:
   image: docker:27
   stage: build
   when: manual
+  services:
+    - docker:dind
   tags:
     - qualys-internal
   script:
@@ -115,6 +117,8 @@ build-node-app:
   image: docker:27
   stage: build
   when: manual
+  services:
+    - docker:dind
   tags:
     - qualys-internal
   script:
@@ -136,6 +140,8 @@ build-rails-app:
   image: docker:27
   stage: build
   when: manual
+  services:
+    - docker:dind
   tags:
     - qualys-internal
   script:
@@ -160,6 +166,8 @@ build-rails-app:
 scan-python-app:
   image: docker:27
   stage: image-scan
+  services:
+    - docker:dind
   tags:
     - qualys-internal
   needs:
@@ -187,6 +195,8 @@ scan-python-app:
 scan-rails-app:
   image: docker:27
   stage: image-scan
+  services:
+    - docker:dind
   tags:
     - qualys-internal
   needs:
@@ -214,6 +224,8 @@ scan-rails-app:
 scan-node-app:
   image: docker:27
   stage: image-scan
+  services:
+    - docker:dind
   tags:
     - qualys-internal
   needs:

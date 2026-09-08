@@ -3,8 +3,8 @@ source 'https://rubygems.org'
 # Intentionally vulnerable gems for qscanner demo
 gem 'sinatra',        '2.0.0'       # CVE-2022-45442
 gem 'rack',           '2.0.6'       # CVE-2019-16782, CVE-2020-8184
-gem 'nokogiri',       '1.8.5'       # CVE-2018-14404, CVE-2019-5477
-gem 'loofah',         '2.2.3'       # CVE-2019-15587
+gem 'nokogiri',       '>= 1.16.0'       # CVE-2018-14404, CVE-2019-5477
+gem 'loofah',         '>= 2.21.0'       # CVE-2019-15587
 gem 'puma',           '3.12.0'      # CVE-2019-16770, CVE-2020-5247
 gem 'json',           '2.2.0'       # CVE-2020-10663
 gem 'rexml',          '3.2.4'       # CVE-2021-28965
