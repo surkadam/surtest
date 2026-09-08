@@ -52,7 +52,7 @@ stages:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STAGE 1 — CODE SCAN (auto-runs on every commit)
+# STAGE 1 — CODE SCAN (auto-runs on every single commit)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 scan-code:
