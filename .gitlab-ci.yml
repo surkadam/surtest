@@ -13,6 +13,7 @@
 #   1. code-scan  — runs automatically on every commit (qscanner code)
 #   2. build      — triggered manually when image build is needed
 #   3. image-scan — runs automatically after build completes
+# test
 # ============================================================
 variables:
   OUTPUT_DIR:              "/usr/local/qualys/qscanner/data/"
