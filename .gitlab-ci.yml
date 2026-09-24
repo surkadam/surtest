@@ -8,7 +8,7 @@
 #   QUALYS_CLIENT_ID      — Qualys OAuth client ID           (Masked)
 #   QUALYS_CLIENT_SECRET  — Qualys OAuth client secret       (Masked)
 #   QUALYS_REGISTRY_TOKEN — GitLab PAT for repo access       (Masked)
-#
+#   test
 # Pipeline flow:
 #   1. code-scan  — runs automatically on every commit (qscanner code)
 #   2. build      — triggered manually when image build is needed
