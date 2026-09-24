@@ -279,6 +279,8 @@ run-demo-containers:
   image: docker:27
   when: manual
   needs: []
+  variables:
+    DOCKER_HOST: "unix:///var/run/docker.sock"   # host daemon (runner mounts the socket)
   tags:
     - qualys-internal
   script:
@@ -306,6 +308,8 @@ stop-demo-containers:
   image: docker:27
   when: manual
   needs: []
+  variables:
+    DOCKER_HOST: "unix:///var/run/docker.sock"   # host daemon (runner mounts the socket)
   tags:
     - qualys-internal
   script:
