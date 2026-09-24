@@ -9,5 +9,5 @@ COPY index.js .
 
 EXPOSE 3000
 
-# VULN: running as root (no USER directive)test
+# VULN: running as root (no USER directive)
 CMD ["node", "index.js"]
