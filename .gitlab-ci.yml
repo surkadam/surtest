@@ -12,7 +12,7 @@
 # Pipeline flow:
 #   1. code-scan  — runs automatically on every commit (qscanner code)
 #   2. build      — triggered manually when image build is needed
-#   3. image-scan — runs automatically after build completes
+#   3. image-scan — manual trigger, decoupled from build (scans image from registry or local daemon)
 # ============================================================
 variables:
   OUTPUT_DIR:              "/usr/local/qualys/qscanner/data/"
@@ -166,13 +166,12 @@ build-rails-app:
 scan-python-app:
   image: docker:27
   stage: image-scan
+  when: manual
+  needs: []          # decoupled — trigger regardless of build stage
   services:
     - docker:dind
   tags:
     - qualys-internal
-  needs:
-    - job: build-python-app
-      artifacts: true
   script:
     - *download_qscanner
     - docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
@@ -195,13 +194,12 @@ scan-python-app:
 scan-rails-app:
   image: docker:27
   stage: image-scan
+  when: manual
+  needs: []          # decoupled — trigger regardless of build stage
   services:
     - docker:dind
   tags:
     - qualys-internal
-  needs:
-    - job: build-rails-app
-      artifacts: true
   script:
     - *download_qscanner
     - docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
@@ -224,13 +222,12 @@ scan-rails-app:
 scan-node-app:
   image: docker:27
   stage: image-scan
+  when: manual
+  needs: []          # decoupled — trigger regardless of build stage
   services:
     - docker:dind
   tags:
     - qualys-internal
-  needs:
-    - job: build-node-app
-      artifacts: true
   script:
     - *download_qscanner
     - docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
