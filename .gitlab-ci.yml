@@ -267,3 +267,47 @@ scan-node-app:
         -o "$OUTPUT_DIR" || QSCANNER_RC=$?
       echo "qscanner exit code: ${QSCANNER_RC:-0}"
       exit 0
+# ═══════════════════════════════════════════════════════════════════════════════
+# RUN DEMO CONTAINERS — manual triggers.
+# The runner mounts the host docker socket, so these containers run on the
+# RUNNER HOST daemon and persist after the job ends — one running container per
+# image so the Qualys CS sensor associates a container instance with each image.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+run-demo-containers:
+  stage: image-scan
+  image: docker:27
+  when: manual
+  needs: []
+  tags:
+    - qualys-internal
+  script:
+    - docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
+    - |
+      for app in python-app node-app rails-app; do
+        SHA_IMG="$CI_REGISTRY_IMAGE/${app}:${CI_COMMIT_SHORT_SHA}"
+        LATEST_IMG="$CI_REGISTRY_IMAGE/${app}:latest"
+        if docker pull "$SHA_IMG" 2>/dev/null; then
+          IMG="$SHA_IMG"
+        else
+          docker pull "$LATEST_IMG" || { echo "!! no image for ${app} — skipping"; continue; }
+          IMG="$LATEST_IMG"
+        fi
+        docker rm -f "qscan-${app}" 2>/dev/null || true
+        docker run -d --name "qscan-${app}" --restart unless-stopped \
+          --label "qualys.demo=image-association" \
+          "$IMG" tail -f /dev/null
+        echo "started qscan-${app}  ←  ${IMG}"
+      done
+    - docker ps --filter "name=qscan-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+
+stop-demo-containers:
+  stage: image-scan
+  image: docker:27
+  when: manual
+  needs: []
+  tags:
+    - qualys-internal
+  script:
+    - for app in python-app node-app rails-app; do docker rm -f "qscan-${app}" 2>/dev/null || true; done
+    - docker ps --filter "name=qscan-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
