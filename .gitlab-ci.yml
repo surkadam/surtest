@@ -175,13 +175,20 @@ scan-python-app:
   script:
     - *download_qscanner
     - docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
-    - docker pull "$PYTHON_IMAGE"
+    - |
+      if docker pull "$PYTHON_IMAGE"; then
+        SCAN_IMAGE="$PYTHON_IMAGE"
+      else
+        echo "[info] $PYTHON_IMAGE not found (no build ran for this commit) — using :latest"
+        docker pull "$PYTHON_IMAGE_LATEST"
+        SCAN_IMAGE="$PYTHON_IMAGE_LATEST"
+      fi
     - export QUALYS_ACCESS_TOKEN="$QUALYS_ACCESS_TOKEN"
     - |
       echo "QUALYS_POD value: [${QUALYS_POD}]"
       echo "QUALYS_ACCESS_TOKEN set: $([ -n "$QUALYS_ACCESS_TOKEN" ] && echo YES || echo NO)"
-      echo "Scanning image: $PYTHON_IMAGE"
-      ./linux-amd64/qscanner image "$PYTHON_IMAGE" \
+      echo "Scanning image: $SCAN_IMAGE"
+      ./linux-amd64/qscanner image "$SCAN_IMAGE" \
         --pod "$QUALYS_POD" \
         -l debug \
         --scan-types pkg \
@@ -203,13 +210,20 @@ scan-rails-app:
   script:
     - *download_qscanner
     - docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
-    - docker pull "$RAILS_IMAGE"
+    - |
+      if docker pull "$RAILS_IMAGE"; then
+        SCAN_IMAGE="$RAILS_IMAGE"
+      else
+        echo "[info] $RAILS_IMAGE not found (no build ran for this commit) — using :latest"
+        docker pull "$RAILS_IMAGE_LATEST"
+        SCAN_IMAGE="$RAILS_IMAGE_LATEST"
+      fi
     - export QUALYS_ACCESS_TOKEN="$QUALYS_ACCESS_TOKEN"
     - |
       echo "QUALYS_POD value: [${QUALYS_POD}]"
       echo "QUALYS_ACCESS_TOKEN set: $([ -n "$QUALYS_ACCESS_TOKEN" ] && echo YES || echo NO)"
-      echo "Scanning image: $RAILS_IMAGE"
-      ./linux-amd64/qscanner image "$RAILS_IMAGE" \
+      echo "Scanning image: $SCAN_IMAGE"
+      ./linux-amd64/qscanner image "$SCAN_IMAGE" \
         --pod "$QUALYS_POD" \
         -l debug \
         --scan-types pkg \
@@ -231,13 +245,20 @@ scan-node-app:
   script:
     - *download_qscanner
     - docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
-    - docker pull "$NODE_IMAGE"
+    - |
+      if docker pull "$NODE_IMAGE"; then
+        SCAN_IMAGE="$NODE_IMAGE"
+      else
+        echo "[info] $NODE_IMAGE not found (no build ran for this commit) — using :latest"
+        docker pull "$NODE_IMAGE_LATEST"
+        SCAN_IMAGE="$NODE_IMAGE_LATEST"
+      fi
     - export QUALYS_ACCESS_TOKEN="$QUALYS_ACCESS_TOKEN"
     - |
       echo "QUALYS_POD value: [${QUALYS_POD}]"
       echo "QUALYS_ACCESS_TOKEN set: $([ -n "$QUALYS_ACCESS_TOKEN" ] && echo YES || echo NO)"
-      echo "Scanning image: $NODE_IMAGE"
-      ./linux-amd64/qscanner image "$NODE_IMAGE" \
+      echo "Scanning image: $SCAN_IMAGE"
+      ./linux-amd64/qscanner image "$SCAN_IMAGE" \
         --pod "$QUALYS_POD" \
         -l debug \
         --scan-types pkg \
