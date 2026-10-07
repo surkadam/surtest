@@ -77,7 +77,7 @@ scan-code:
         --skip-verify-tls \
         -l debug \
         --collect-build-pipeline-metadata=true \
-        --scan-types compliance \
+        --scan-types pkg,compliance \
         --compliance-benchmarks AI_NIST_RMF \
         --client-id "$QUALYS_CLIENT_ID" \
         --client-secret "$QUALYS_CLIENT_SECRET" || SCAN_RC=$?
