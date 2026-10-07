@@ -8,7 +8,9 @@
 #   QUALYS_CLIENT_ID      — Qualys OAuth client ID           (Masked)
 #   QUALYS_CLIENT_SECRET  — Qualys OAuth client secret       (Masked)
 #   QUALYS_REGISTRY_TOKEN — GitLab PAT for repo access       (Masked)
-#   
+#   JENKINS_USER          — Jenkins user for artifact download (Masked)
+#   JENKINS_TOKEN         — Jenkins API token                (Masked)
+#
 # Pipeline flow:
 #   1. code-scan  — runs automatically on every commit (qscanner code)
 #   2. build      — triggered manually when image build is needed
@@ -25,8 +27,8 @@ variables:
   DOCKER_HOST:             "tcp://docker:2375"
   DOCKER_TLS_CERTDIR:      ""
   DOCKER_DRIVER:           "overlay2"
-  QSCANNER_VERSION:        "5.1.0-9-dev"
-  QSCANNER_PKG_URL:        "https://gitlab.com/api/v4/projects/82155352/packages/generic/qscanner/${QSCANNER_VERSION}/qscanner"
+  QSCANNER_VERSION:        "5.3.0-639-dev"
+  QSCANNER_BINARY_URL:     "https://jenkins.intranet.qualys.com/job/CS-Sensor/job/QScanner/job/develop/639/artifact/output/qscanner-${QSCANNER_VERSION}.linux-amd64.tar.gz"
   CODE_REPO_URL:           "https://gitlab.com/surkadam/qscanner-demo.git"
 
 stages:
@@ -34,21 +36,24 @@ stages:
   - build
   - image-scan
 
-# ── Reusable: download qscanner 5.x from GitLab Package Registry ─────────────
+# ── Reusable: download qscanner 5.x tarball from Jenkins and extract ─────────
 .download_qscanner: &download_qscanner
-  - apk add --no-cache curl
+  - apk add --no-cache curl tar
   - mkdir -p linux-amd64
   - |
-    echo "Downloading qscanner ${QSCANNER_VERSION} from GitLab Package Registry..."
+    echo "Downloading qscanner ${QSCANNER_VERSION} from Jenkins..."
     curl --silent --fail --location \
-      --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-      --output linux-amd64/qscanner \
-      "${QSCANNER_PKG_URL}"
-  - chmod +x ./linux-amd64/qscanner
-  - ./linux-amd64/qscanner --version
-  - export HOME="$CI_PROJECT_DIR"
-  - mkdir -p "$OUTPUT_DIR"
-  - rm -rf "${OUTPUT_DIR:?}"/*
+      --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
+      --output qscanner.tar.gz \
+      "${QSCANNER_BINARY_URL}"
+    tar xzf qscanner.tar.gz
+    BIN=$(find . -type f -name qscanner | head -1)
+    mv "$BIN" ./linux-amd64/qscanner
+    chmod +x ./linux-amd64/qscanner
+    ./linux-amd64/qscanner --version
+    export HOME="$CI_PROJECT_DIR"
+    mkdir -p "$OUTPUT_DIR"
+    rm -rf "${OUTPUT_DIR:?}"/*
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
