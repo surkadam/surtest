@@ -42,10 +42,16 @@ stages:
   - mkdir -p linux-amd64
   - |
     echo "Downloading qscanner ${QSCANNER_VERSION} from Jenkins..."
-    curl --silent --fail --location --insecure \
+    HTTP_CODE=$(curl --silent --show-error --location --insecure \
       --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
       --output qscanner.tar.gz \
-      "${QSCANNER_BINARY_URL}"
+      --write-out "%{http_code}" \
+      "${QSCANNER_BINARY_URL}") || CURL_RC=$?
+    echo "HTTP status: ${HTTP_CODE:-N/A}  curl exit: ${CURL_RC:-0}"
+    if [ "${HTTP_CODE:-}" != "200" ]; then
+      echo "!! Download failed (401/403 = bad JENKINS_USER/JENKINS_TOKEN, 404 = wrong artifact URL)"
+      exit 1
+    fi
     tar xzf qscanner.tar.gz
     BIN=$(find . -type f -name qscanner | head -1)
     mv "$BIN" ./linux-amd64/qscanner
