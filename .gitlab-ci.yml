@@ -42,7 +42,7 @@ stages:
   - mkdir -p linux-amd64
   - |
     echo "Downloading qscanner ${QSCANNER_VERSION} from Jenkins..."
-    curl --silent --fail --location \
+    curl --silent --fail --location --insecure \
       --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
       --output qscanner.tar.gz \
       "${QSCANNER_BINARY_URL}"
