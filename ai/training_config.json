@@ -1,0 +1,24 @@
+{
+  "training_job": "fraud-detection-classifier",
+  "dataset": "s3://qualys-demo-bucket/training/transactions.csv",
+  "model_output": "s3://qualys-demo-bucket/models/fraud-detection-classifier/",
+  "hyperparameters": {
+    "epochs": 20,
+    "learning_rate": 0.001,
+    "batch_size": 64
+  },
+  "security": {
+    "tls_enabled": true,
+    "iam_role": "arn:aws:iam::123456789012:role/ai-training-role",
+    "vpc_id": "vpc-0abc1234"
+  },
+  "credentials": {
+    "api_key": "sk-live-9f8e7d6c5b4a3210fedcba9876543210",
+    "aws_secret_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  },
+  "monitoring": {
+    "drift_detection": true,
+    "performance_alerts": true,
+    "cost_alerts": false
+  }
+}

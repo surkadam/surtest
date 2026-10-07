@@ -1,0 +1,39 @@
+# AI Governance — model card (COMPLETE — intended to PASS documentation controls)
+model_name: fraud-detection-classifier
+model_version: 1.2.0
+owner: surkadam@qualys.com
+team: cs-demo
+intended_use: >
+  Internal demonstration of AI compliance scanning. Classifies sample
+  transactions for the qscanner-demo repository. Not for production use.
+model_type: binary_classifier
+framework: scikit-learn
+training_data:
+  source: internal synthetic dataset
+  description: 50k synthetic transactions, no PII, generated for demo purposes
+  sensitive_data: false
+  dataset_version: 2026.09
+evaluation:
+  metrics:
+    accuracy: 0.91
+    precision: 0.88
+    recall: 0.84
+  bias_assessment:
+    completed: true
+    date: 2026-08-15
+    method: demographic parity across test segments
+    report: ./bias_assessment_report.md
+governance:
+  human_oversight: enabled
+  approval_status: approved
+  approver: surkadam@qualys.com
+  approval_date: 2026-09-01
+  review_cycle: quarterly
+security:
+  data_encryption_at_rest: true
+  data_encryption_in_transit: true
+  access_control: rbac
+  audit_logging: true
+limits_and_risks: >
+  Demo model only. Known limitations: trained on synthetic data,
+  not validated against production traffic patterns.

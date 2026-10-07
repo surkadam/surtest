@@ -1,0 +1,9 @@
+# AI Governance — INCOMPLETE model card (missing required fields — intended to FAIL)
+model_name: legacy-recommender
+model_version: 0.3.0-alpha
+owner: unknown
+# MISSING: intended_use, training_data, evaluation, governance, security sections
+framework: tensorflow
+notes: >
+  Legacy experiment kept for reference. This card is intentionally
+  incomplete for compliance-scan demonstration purposes.

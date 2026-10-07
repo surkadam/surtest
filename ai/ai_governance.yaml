@@ -1,0 +1,17 @@
+# AI governance policy — mixed controls (some PASS, some FAIL by design)
+governance:
+  data_encryption_at_rest: true          # PASS
+  data_encryption_in_transit: true       # PASS
+  audit_logging: false                   # FAIL — audit logging disabled
+  model_versioning: true                 # PASS
+  bias_testing_required: true            # PASS
+  bias_testing_completed: false          # FAIL — policy requires it, not done
+  human_oversight: enabled               # PASS
+  human_oversight_reviewer: surkadam@qualys.com
+  incident_response_plan: false          # FAIL — no AI incident response plan
+  model_registry: internal-registry      # PASS
+  rollback_capability: true              # PASS
+  data_retention_days: null              # FAIL — retention undefined
+  third_party_model_audit: false         # FAIL — external models unaudited
+  consent_management: true               # PASS
+  explainability: partial                # FAIL — full explainability required
