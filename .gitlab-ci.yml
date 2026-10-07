@@ -78,7 +78,7 @@ scan-code:
         -l debug \
         --collect-build-pipeline-metadata=true \
         --scan-types pkg,compliance \
-        --compliance-benchmarks AI_NIST_RMF \
+        --compliance-benchmarks AI_NIST_RMF,AI_EU_ACT,AI_PCI_DSS \
         --client-id "$QUALYS_CLIENT_ID" \
         --client-secret "$QUALYS_CLIENT_SECRET" || SCAN_RC=$?
       echo "qscanner code scan exit code: ${SCAN_RC:-0}"
