@@ -10,7 +10,7 @@
 #   QUALYS_REGISTRY_TOKEN — GitLab PAT for repo access       (Masked)
 #   JENKINS_USER          — Jenkins user for artifact download (Masked)
 #   JENKINS_TOKEN         — Jenkins API token                (Masked)
-#
+#   test
 # Pipeline flow:
 #   1. code-scan  — runs automatically on every commit (qscanner code)
 #   2. build      — triggered manually when image build is needed
