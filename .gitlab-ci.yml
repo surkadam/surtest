@@ -108,7 +108,6 @@ scan-code:
 build-python-app:
   image: docker:27
   stage: build
-  when: manual
   services:
     - docker:dind
   tags:
@@ -131,7 +130,6 @@ build-python-app:
 build-node-app:
   image: docker:27
   stage: build
-  when: manual
   services:
     - docker:dind
   tags:
@@ -154,7 +152,6 @@ build-node-app:
 build-rails-app:
   image: docker:27
   stage: build
-  when: manual
   services:
     - docker:dind
   tags:
@@ -181,8 +178,9 @@ build-rails-app:
 scan-python-app:
   image: docker:27
   stage: image-scan
-  when: manual
-  needs: []          # decoupled — trigger regardless of build stage
+  needs:
+    - job: build-python-app
+      artifacts: true
   services:
     - docker:dind
   tags:
@@ -216,8 +214,9 @@ scan-python-app:
 scan-rails-app:
   image: docker:27
   stage: image-scan
-  when: manual
-  needs: []          # decoupled — trigger regardless of build stage
+  needs:
+    - job: build-rails-app
+      artifacts: true
   services:
     - docker:dind
   tags:
@@ -251,8 +250,9 @@ scan-rails-app:
 scan-node-app:
   image: docker:27
   stage: image-scan
-  when: manual
-  needs: []          # decoupled — trigger regardless of build stage
+  needs:
+    - job: build-node-app
+      artifacts: true
   services:
     - docker:dind
   tags:
